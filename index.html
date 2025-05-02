@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlgoTrading Pro - Prototype (Connected)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide.min.js"></script>
+    <style>
+        /* Use Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for better aesthetics (optional) */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Style for active sidebar link */
+        .sidebar-link.active {
+            background-color: #3b82f6; /* bg-blue-500 */
+            color: white;
+        }
+        .sidebar-link.active svg {
+            stroke: white;
+        }
+        /* Ensure canvas is responsive */
+        canvas {
+            max-width: 100%;
+            height: auto !important; /* Override Chart.js inline style */
+        }
+        /* Basic loading indicator */
+        .loader {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block; /* Keep it inline */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <link rel="preconnect" href="https://rsms.me/">
+     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+     <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+              },
+            }
+          }
+        }
+      </script>
+</head>
+<body class="bg-gray-100 flex h-screen overflow-hidden">
+
+    <aside class="w-64 bg-gray-800 text-gray-300 flex flex-col fixed inset-y-0 left-0 z-30">
+        <div class="p-4 border-b border-gray-700 flex items-center space-x-2">
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-candlestick-chart text-blue-400"><path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/><path d="M3 3v18h18"/></svg>
+            <h1 class="text-xl font-semibold text-white">AlgoTrading Pro</h1>
+        </div>
+        <nav class="flex-1 overflow-y-auto p-4 space-y-2">
+            <a href="#dashboard" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-gray-700 hover:text-white transition-colors duration-150 active" data-section="dashboard">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#strategies" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-gray-700 hover:text-white transition-colors duration-150" data-section="strategies">
+                <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
+                <span>Strategies</span>
+            </a>
+            <a href="#backtesting" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-gray-700 hover:text-white transition-colors duration-150" data-section="backtesting">
+                <i data-lucide="history" class="w-5 h-5"></i>
+                <span>Backtesting</span>
+            </a>
+             <a href="#monitoring" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-gray-700 hover:text-white transition-colors duration-150" data-section="monitoring">
+                <i data-lucide="activity" class="w-5 h-5"></i>
+                <span>Monitoring</span>
+            </a>
+            <a href="#alerts" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-gray-700 hover:text-white transition-colors duration-150" data-section="alerts">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span>Alerts</span>
+                 <span class="ml-auto inline-block py-0.5 px-2 text-xs font-medium bg-red-500 text-white rounded-full">3</span>
+            </a>
+        </nav>
+        <div class="p-4 border-t border-gray-700">
+            <a href="#settings" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-gray-700 hover:text-white transition-colors duration-150" data-section="settings">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span>Settings</span>
+            </a>
+             <a href="#logout" class="flex items-center space-x-3 px-3 py-2 rounded-md hover:bg-gray-700 hover:text-white transition-colors duration-150" data-section="logout">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 overflow-y-auto p-6 md:p-8">
+        <section id="dashboard" class="content-section">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Dashboard</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Total P&L (Today)</p>
+                        <p id="kpi-pnl" class="text-2xl font-semibold text-green-600">$0.00</p>
+                    </div>
+                     <i data-lucide="trending-up" class="w-8 h-8 text-green-500"></i>
+                </div>
+                 <div class="bg-white p-4 rounded-lg shadow flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Active Strategies</p>
+                        <p id="kpi-active-strats" class="text-2xl font-semibold text-gray-700">5</p>
+                    </div>
+                    <i data-lucide="bot" class="w-8 h-8 text-blue-500"></i>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Open Positions</p>
+                        <p id="kpi-open-positions" class="text-2xl font-semibold text-gray-700">12</p>
+                    </div>
+                    <i data-lucide="layers" class="w-8 h-8 text-purple-500"></i>
+                </div>
+                 <div class="bg-white p-4 rounded-lg shadow flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">System Status</p>
+                        <p id="kpi-system-status" class="text-2xl font-semibold text-green-600 flex items-center">
+                             <span class="w-3 h-3 bg-green-500 rounded-full mr-2 inline-block"></span> Normal
+                        </p>
+                    </div>
+                     <i data-lucide="server" class="w-8 h-8 text-gray-500"></i>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Portfolio Equity Curve (Simulated)</h3>
+                    <canvas id="equityCurveChart"></canvas>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Active Positions</h3>
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                                    <th class="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                                    <th class="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider">Avg Price</th>
+                                    <th class="px-4 py-2 text-right font-medium text-gray-500 uppercase tracking-wider">P&L</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positions-table" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="strategies" class="content-section hidden">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Strategy Configuration</h2>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">Configure New Strategy Instance</h3>
+                 <form id="strategy-form">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                        <div>
+                            <label for="strategy-name" class="block text-sm font-medium text-gray-700 mb-1">Instance Name</label>
+                            <input type="text" id="strategy-name" name="strategy-name" value="My Adaptive MA Strategy" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="strategy-template" class="block text-sm font-medium text-gray-700 mb-1">Select Strategy Template</label>
+                            <select id="strategy-template" name="strategy-template" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="adaptive_ma">Adaptive Moving Average (KAMA)</option>
+                                <option value="vhf_filter">Trend Filter (VHF Based)</option>
+                                <option value="fdi_adaptive">FDI Adaptive Oscillator</option>
+                                <option value="homodyne_cci">Homodyne Adaptive CCI</option>
+                                <option value="hilbert_cycle">Hilbert Transform Cycle Trader</option>
+                                <option value="goertzel_seasonality">Goertzel Seasonality Detector</option>
+                                <option value="simple_ma_cross">Simple MA Crossover</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="strategy-parameters" class="mb-6 border-t pt-6">
+                        <h4 class="text-md font-semibold text-gray-600 mb-3">Parameters</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                             <div>
+                                <label for="param-period" class="block text-xs font-medium text-gray-600 mb-1">Efficiency Ratio Period</label>
+                                <input type="number" id="param-period" name="param-period" value="10" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                             <div>
+                                <label for="param-fast" class="block text-xs font-medium text-gray-600 mb-1">Fast MA Period (SC)</label>
+                                <input type="number" id="param-fast" name="param-fast" value="2" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                             <div>
+                                <label for="param-slow" class="block text-xs font-medium text-gray-600 mb-1">Slow MA Period (SC)</label>
+                                <input type="number" id="param-slow" name="param-slow" value="30" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                         </div>
+                    </div>
+
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="strategy-symbol" class="block text-sm font-medium text-gray-700 mb-1">Symbol(s)</label>
+                            <input type="text" id="strategy-symbol" name="strategy-symbol" value="AAPL,MSFT" placeholder="Comma-separated symbols" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                         <div>
+                            <label for="strategy-timeframe" class="block text-sm font-medium text-gray-700 mb-1">Timeframe</label>
+                            <select id="strategy-timeframe" name="strategy-timeframe" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="1">1 Minute</option>
+                                <option value="5" selected>5 Minutes</option>
+                                <option value="15">15 Minutes</option>
+                                <option value="60">1 Hour</option>
+                                <option value="D">1 Day</option>
+                                <option value="W">1 Week</option>
+                            </select>
+                        </div>
+                     </div>
+
+                     <div class="flex justify-end space-x-3">
+                         <button type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">Cancel</button>
+                         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">Save & Deploy</button>
+                     </div>
+                </form>
+            </div>
+        </section>
+
+        <section id="backtesting" class="content-section hidden">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Backtesting</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Setup Backtest</h3>
+                    <form id="backtest-form">
+                         <div class="mb-4">
+                            <label for="backtest-strategy" class="block text-sm font-medium text-gray-700 mb-1">Select Strategy Config</label>
+                            <select id="backtest-strategy" name="backtest-strategy" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option>My Adaptive MA Strategy</option>
+                                <option>VHF Trend Filter - EURUSD</option>
+                                <option>FDI Range Trader - SPY</option>
+                                <option>Saved Config 1</option>
+                            </select>
+                        </div>
+                         <div class="mb-4">
+                            <label for="backtest-symbol" class="block text-sm font-medium text-gray-700 mb-1">Symbol</label>
+                            <input type="text" id="backtest-symbol" name="backtest-symbol" value="AAPL" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                         <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="backtest-start" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                <input type="date" id="backtest-start" name="backtest-start" value="2023-01-01" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="backtest-end" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                                <input type="date" id="backtest-end" name="backtest-end" value="2023-12-31" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                         </div>
+                         <div class="mb-4">
+                             <label for="backtest-timeframe" class="block text-sm font-medium text-gray-700 mb-1">Timeframe</label>
+                             <select id="backtest-timeframe" name="backtest-timeframe" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                 <option value="1">1 Minute</option>
+                                 <option value="5">5 Minutes</option>
+                                 <option value="15">15 Minutes</option>
+                                 <option value="60">1 Hour</option>
+                                 <option value="D" selected>1 Day</option>
+                                 <option value="W">1 Week</option>
+                             </select>
+                         </div>
+                         <div class="mb-4">
+                            <label for="backtest-capital" class="block text-sm font-medium text-gray-700 mb-1">Initial Capital</label>
+                            <input type="number" id="backtest-capital" name="backtest-capital" value="100000" step="1000" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                         <div class="mb-4">
+                            <label for="backtest-commission" class="block text-sm font-medium text-gray-700 mb-1">Commission (per share/contract)</label>
+                            <input type="number" id="backtest-commission" name="backtest-commission" value="0.005" step="0.001" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                         <div class="mb-6">
+                            <label for="backtest-slippage" class="block text-sm font-medium text-gray-700 mb-1">Slippage (ticks/points)</label>
+                            <input type="number" id="backtest-slippage" name="backtest-slippage" value="1" step="1" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <button type="button" id="run-backtest-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center justify-center space-x-2">
+                            <i data-lucide="play" class="w-5 h-5"></i>
+                            <span>Run Backtest</span>
+                        </button>
+                        <div id="backtest-status" class="mt-4 text-sm"></div>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Backtest Results</h3>
+                    <div id="backtest-results-content" class="text-gray-500 text-center py-10">
+                        Run a backtest to see results here.
+                    </div>
+                    <div id="backtest-results-details" class="hidden">
+                        <div class="mb-6">
+                            <h4 class="text-md font-semibold text-gray-600 mb-2">Equity Curve (Mock - Based on Fetched Data Length)</h4>
+                            <canvas id="backtestEquityCurveChart"></canvas>
+                        </div>
+                        <div>
+                            <h4 class="text-md font-semibold text-gray-600 mb-3">Performance Metrics (Mock)</h4>
+                             <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                <div class="bg-gray-50 p-3 rounded">
+                                    <p class="text-gray-500">Total Return</p>
+                                    <p id="metric-return" class="font-semibold text-lg text-green-600">0%</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded">
+                                    <p class="text-gray-500">Max Drawdown</p>
+                                    <p id="metric-drawdown" class="font-semibold text-lg text-red-600">0%</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded">
+                                    <p class="text-gray-500">Sharpe Ratio</p>
+                                    <p id="metric-sharpe" class="font-semibold text-lg text-gray-700">0.00</p>
+                                </div>
+                                 <div class="bg-gray-50 p-3 rounded">
+                                    <p class="text-gray-500">Profit Factor</p>
+                                    <p id="metric-profit-factor" class="font-semibold text-lg text-gray-700">0.00</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded">
+                                    <p class="text-gray-500">Win Rate</p>
+                                    <p id="metric-winrate" class="font-semibold text-lg text-gray-700">0%</p>
+                                </div>
+                                 <div class="bg-gray-50 p-3 rounded">
+                                    <p class="text-gray-500">Total Trades</p>
+                                    <p id="metric-trades" class="font-semibold text-lg text-gray-700">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-xs">
+                            <strong>Note:</strong> Backtest results (equity curve, metrics) shown are currently generated using mock logic after successfully fetching historical data from the backend. The backend does not perform the actual strategy simulation yet.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="monitoring" class="content-section hidden">
+             <h2 class="text-2xl font-semibold text-gray-800 mb-6">Live Monitoring</h2>
+             <div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">
+                 Placeholder for detailed live strategy monitoring, adaptive parameter visualization, etc.
+                 <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-sm text-left">
+                     **Unique Feature Idea:** Adaptive Strategy Dashboard could go here, showing:
+                     <ul class="list-disc list-inside mt-2">
+                         <li>Current Market Regime (e.g., VHF/FDI based: Trending/Ranging)</li>
+                         <li>Dominant Cycle Period (from Homodyne/Hilbert)</li>
+                         <li>Live Adaptive Parameter Values (e.g., KAMA period changing)</li>
+                     </ul>
+                 </div>
+             </div>
+         </section>
+         <section id="alerts" class="content-section hidden">
+             <h2 class="text-2xl font-semibold text-gray-800 mb-6">Alerts</h2>
+              <div class="bg-white p-6 rounded-lg shadow">
+                 <h3 class="text-lg font-semibold text-gray-700 mb-4">Active Alerts</h3>
+                 <div class="space-y-3">
+                     <div class="p-3 bg-red-50 border border-red-200 rounded-md flex justify-between items-center">
+                         <div>
+                            <p class="font-medium text-red-700">Risk Limit Breach: Max Drawdown Exceeded</p>
+                            <p class="text-sm text-red-600">Strategy 'FDI Range Trader - SPY' hit -5% drawdown.</p>
+                            <p class="text-xs text-gray-500">Timestamp: 2025-05-02 12:25:10 CEST</p>
+                         </div>
+                         <button class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">Acknowledge</button>
+                     </div>
+                     <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-md flex justify-between items-center">
+                         <div>
+                             <p class="font-medium text-yellow-700">Connectivity Issue: Broker API Latency High</p>
+                             <p class="text-sm text-yellow-600">Interactive Brokers API response time > 500ms.</p>
+                             <p class="text-xs text-gray-500">Timestamp: 2025-05-02 12:20:05 CEST</p>
+                         </div>
+                         <button class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200">Acknowledge</button>
+                     </div>
+                     <div class="p-3 bg-blue-50 border border-blue-200 rounded-md flex justify-between items-center">
+                         <div>
+                             <p class="font-medium text-blue-700">Info: Strategy Deployed Successfully</p>
+                             <p class="text-sm text-blue-600">Strategy 'My Adaptive MA Strategy' is now active.</p>
+                             <p class="text-xs text-gray-500">Timestamp: 2025-05-02 11:58:30 CEST</p>
+                         </div>
+                          <button class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">Acknowledge</button>
+                     </div>
+                 </div>
+                 <div class="mt-6 text-right">
+                    <button class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm">Configure Alert Rules</button>
+                 </div>
+             </div>
+         </section>
+         <section id="settings" class="content-section hidden">
+             <h2 class="text-2xl font-semibold text-gray-800 mb-6">Settings</h2>
+             <div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">
+                 Placeholder for user profile, API key management, notification preferences, etc.
+             </div>
+         </section>
+         <section id="logout" class="content-section hidden">
+             <h2 class="text-2xl font-semibold text-gray-800 mb-6">Logout</h2>
+             <div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">
+                 User would be logged out here.
+             </div>
+         </section>
+
+    </main>
+
+    <script>
+        // --- Configuration ---
+        // Make sure this matches the address where your Python backend is running
+        const BACKEND_URL = 'http://127.0.0.1:8000';
+
+        // --- Globals ---
+        let equityChart = null;
+        let backtestEquityChart = null;
+        let pnlValue = 1250.75; // Initial mock P&L
+        let intervalId = null; // For simulating real-time updates
+
+        // --- Mock Data (Keep for fallback and UI structure) ---
+        const mockPositions = [
+            { symbol: 'AAPL', qty: 100, avgPrice: 175.20, pnl: 230.50 },
+            { symbol: 'MSFT', qty: 50, avgPrice: 410.80, pnl: -115.00 },
+            { symbol: 'GOOGL', qty: 200, avgPrice: 165.10, pnl: 850.25 },
+            { symbol: 'TSLA', qty: -50, avgPrice: 180.50, pnl: 315.00 },
+            { symbol: 'NVDA', qty: 25, avgPrice: 880.00, pnl: -40.00 },
+        ];
+
+        // Generates mock equity curve data based on number of points
+        const generateMockEquityData = (numPoints = 50, startValue = 100000) => {
+            const data = [];
+            const labels = [];
+            let value = startValue;
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - numPoints);
+
+            for (let i = 0; i < numPoints; i++) {
+                value += (Math.random() - 0.48) * (startValue * 0.005); // Simulate fluctuations relative to start
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                labels.push(date.toLocaleDateString('en-CA')); // YYYY-MM-DD
+                data.push(value.toFixed(2));
+            }
+            return { labels, data };
+        };
+
+        // Generates mock performance metrics
+        const generateMockPerformanceMetrics = () => {
+            return {
+                return: (Math.random() * 40 - 10).toFixed(2), // -10% to +30%
+                drawdown: (-Math.random() * 15).toFixed(2), // 0% to -15%
+                sharpe: (Math.random() * 2.5).toFixed(2), // 0.00 to 2.50
+                profitFactor: (Math.random() * 2 + 0.5).toFixed(2), // 0.50 to 2.50
+                winrate: (Math.random() * 40 + 30).toFixed(1), // 30% to 70%
+                trades: Math.floor(Math.random() * 200 + 20), // 20 to 220
+            };
+        };
+
+
+        // --- Charting Functions ---
+        const createChart = (ctx, labels, data, label) => {
+            // Destroy existing chart on the canvas if it exists
+            const existingChart = Chart.getChart(ctx);
+            if (existingChart) {
+                existingChart.destroy();
+            }
+            // Create new chart
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: 'rgb(59, 130, 246)', // blue-500
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0, // Hide points for cleaner line
+                        tension: 0.1, // Slight curve
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Allow custom height
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                             ticks: {
+                                callback: function(value, index, values) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxTicksLimit: 10, // Limit number of x-axis labels shown
+                                autoSkip: true,
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false // Hide legend for single dataset
+                        }
+                    }
+                }
+            });
+        };
+
+        // --- UI Update Functions ---
+        const updatePositionsTable = () => {
+            const tbody = document.getElementById('positions-table');
+            tbody.innerHTML = ''; // Clear existing rows
+            mockPositions.forEach(pos => {
+                const row = document.createElement('tr');
+                const pnlClass = pos.pnl >= 0 ? 'text-green-600' : 'text-red-600';
+                row.innerHTML = `
+                    <td class="px-4 py-2 whitespace-nowrap font-medium text-gray-900">${pos.symbol}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-right">${pos.qty}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-right">$${pos.avgPrice.toFixed(2)}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-right ${pnlClass}">$${pos.pnl.toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        };
+
+        const updateKPIs = () => {
+            // Simulate P&L fluctuation
+            pnlValue += (Math.random() - 0.5) * 50;
+            const pnlEl = document.getElementById('kpi-pnl');
+            pnlEl.textContent = `$${pnlValue.toFixed(2)}`;
+            pnlEl.className = `text-2xl font-semibold ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`;
+             // Update other KPIs (can be made dynamic later)
+            document.getElementById('kpi-active-strats').textContent = '5';
+            document.getElementById('kpi-open-positions').textContent = mockPositions.length;
+             // Simulate system status change occasionally
+            if (Math.random() < 0.05) {
+                const statusEl = document.getElementById('kpi-system-status');
+                const isNormal = Math.random() < 0.8; // 80% chance to be normal
+                statusEl.innerHTML = `
+                     <span class="w-3 h-3 ${isNormal ? 'bg-green-500' : 'bg-red-500'} rounded-full mr-2 inline-block"></span>
+                     ${isNormal ? 'Normal' : 'Error'}
+                `;
+                 statusEl.className = `text-2xl font-semibold flex items-center ${isNormal ? 'text-green-600' : 'text-red-600'}`;
+            }
+        };
+
+        const updateDashboardChart = () => {
+            if (equityChart) {
+                // Simulate adding a new data point
+                const currentData = equityChart.data.datasets[0].data;
+                const lastValue = currentData.length > 0 ? parseFloat(currentData[currentData.length - 1]) : 100000;
+                const newDataPoint = lastValue + (Math.random() - 0.48) * 500;
+                const newLabel = new Date().toLocaleTimeString(); // Add time as label
+
+                equityChart.data.labels.push(newLabel);
+                equityChart.data.datasets[0].data.push(newDataPoint.toFixed(2));
+
+                // Optional: Limit the number of data points shown
+                const maxDataPoints = 50;
+                 if (equityChart.data.labels.length > maxDataPoints) {
+                    equityChart.data.labels.shift();
+                    equityChart.data.datasets[0].data.shift();
+                 }
+
+                equityChart.update('none'); // Update without animation
+            }
+        };
+
+        // --- Backtest Result Display ---
+        const displayBacktestResults = (historicalData) => {
+            // Hide placeholder, show results area
+            document.getElementById('backtest-results-content').classList.add('hidden');
+            document.getElementById('backtest-results-details').classList.remove('hidden');
+
+            // --- MOCK RESULT GENERATION ---
+            // Generate mock metrics
+            const mockMetrics = generateMockPerformanceMetrics();
+            // Generate mock equity curve based on the length of fetched data
+            const mockEquity = generateMockEquityData(historicalData ? historicalData.length : 50, parseFloat(document.getElementById('backtest-capital').value || 100000));
+            // ------------------------------
+
+            // Update metrics display
+            document.getElementById('metric-return').textContent = `${mockMetrics.return}%`;
+            document.getElementById('metric-return').className = `font-semibold text-lg ${mockMetrics.return >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            document.getElementById('metric-drawdown').textContent = `${mockMetrics.drawdown}%`;
+            document.getElementById('metric-sharpe').textContent = mockMetrics.sharpe;
+            document.getElementById('metric-profit-factor').textContent = mockMetrics.profitFactor;
+            document.getElementById('metric-winrate').textContent = `${mockMetrics.winrate}%`;
+            document.getElementById('metric-trades').textContent = mockMetrics.trades;
+
+             // Update chart
+            const ctx = document.getElementById('backtestEquityCurveChart').getContext('2d');
+            // Use the generated mock equity data for the chart
+            backtestEquityChart = createChart(ctx, mockEquity.labels, mockEquity.data, 'Backtest Equity (Mock)');
+        };
+
+        // Function to display status/error messages
+        const showBacktestStatus = (message, isError = false) => {
+            const statusEl = document.getElementById('backtest-status');
+            statusEl.textContent = message;
+            statusEl.className = `mt-4 text-sm ${isError ? 'text-red-600' : 'text-blue-600'}`;
+        };
+
+        // --- Navigation ---
+        const sections = document.querySelectorAll('.content-section');
+        const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+        const showSection = (sectionId) => {
+            sections.forEach(section => {
+                section.id === sectionId ? section.classList.remove('hidden') : section.classList.add('hidden');
+            });
+            sidebarLinks.forEach(link => {
+                link.dataset.section === sectionId ? link.classList.add('active') : link.classList.remove('active');
+            });
+
+            if (sectionId === 'dashboard') {
+                if (!intervalId) {
+                    updateKPIs();
+                    updateDashboardChart();
+                    intervalId = setInterval(() => { updateKPIs(); updateDashboardChart(); }, 3000);
+                }
+            } else {
+                if (intervalId) { clearInterval(intervalId); intervalId = null; }
+            }
+        };
+
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                showSection(link.dataset.section);
+            });
+        });
+
+         // --- Event Listeners ---
+
+        // Backtest Button Click Handler
+        document.getElementById('run-backtest-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('run-backtest-btn');
+            const statusEl = document.getElementById('backtest-status');
+
+            // Get form values
+            const symbol = document.getElementById('backtest-symbol').value.toUpperCase();
+            const resolution = document.getElementById('backtest-timeframe').value;
+            const startDate = document.getElementById('backtest-start').value;
+            const endDate = document.getElementById('backtest-end').value;
+
+            // Basic validation
+            if (!symbol || !startDate || !endDate) {
+                showBacktestStatus('Please fill in Symbol, Start Date, and End Date.', true);
+                return;
+            }
+
+            // Calculate days history (approximation for the backend endpoint)
+            const startDt = new Date(startDate);
+            const endDt = new Date(endDate);
+            const daysHistory = Math.ceil((endDt - startDt) / (1000 * 60 * 60 * 24)) + 1; // Add 1 for inclusivity
+
+            if (daysHistory <= 0) {
+                 showBacktestStatus('End Date must be after Start Date.', true);
+                return;
+            }
+
+            // Update button state to loading
+            btn.disabled = true;
+            btn.innerHTML = `<div class="loader mr-2"></div> Running...`;
+            showBacktestStatus('Fetching historical data from backend...', false);
+            // Hide previous results
+            document.getElementById('backtest-results-details').classList.add('hidden');
+            document.getElementById('backtest-results-content').classList.remove('hidden');
+            document.getElementById('backtest-results-content').textContent = 'Fetching data...';
+
+
+            // --- API Call to Backend ---
+            try {
+                const apiUrl = `${BACKEND_URL}/data/candles/${symbol}?resolution=${resolution}&days_history=${daysHistory}`;
+                console.log(`Calling backend API: ${apiUrl}`); // Log API call
+
+                const response = await fetch(apiUrl);
+
+                if (!response.ok) {
+                    // Handle HTTP errors (like 4xx, 5xx)
+                    let errorMsg = `Error fetching data: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.detail || errorMsg; // Use backend's detail message if available
+                    } catch (e) { /* Ignore JSON parsing error if body is not JSON */ }
+                    throw new Error(errorMsg);
+                }
+
+                const result = await response.json();
+
+                if (result.data && result.data.length > 0) {
+                    showBacktestStatus(`Successfully fetched ${result.data.length} data points for ${symbol}. Generating mock results...`, false);
+                    console.log("Received data:", result.data); // Log received data
+
+                    // --- Display Mock Results (using fetched data length) ---
+                    // NOTE: This part is still using MOCK logic for the results themselves.
+                    // The actual fetched data (result.data) is available here if you
+                    // wanted to use it for more sophisticated mock generation or
+                    // eventually integrate a JS backtesting library.
+                    displayBacktestResults(result.data);
+                    showBacktestStatus(`Mock backtest results generated for ${symbol}.`, false);
+
+                } else {
+                     showBacktestStatus(`No historical data returned from backend for ${symbol} with the given parameters.`, true);
+                     document.getElementById('backtest-results-content').textContent = 'No data found for backtest.';
+                }
+
+            } catch (error) {
+                console.error("Backtest API call failed:", error);
+                showBacktestStatus(`Failed to run backtest: ${error.message}`, true);
+                document.getElementById('backtest-results-content').textContent = 'Error running backtest.';
+            } finally {
+                // Reset button state
+                btn.disabled = false;
+                 btn.innerHTML = `
+                    <i data-lucide="play" class="w-5 h-5"></i>
+                    <span>Run Backtest</span>
+                 `;
+                 lucide.createIcons(); // Re-render icons if needed
+            }
+        });
+
+         // Handle strategy template change to update parameters (basic example)
+        document.getElementById('strategy-template').addEventListener('change', (e) => {
+            const selectedStrategy = e.target.value;
+            const paramsContainer = document.getElementById('strategy-parameters');
+            paramsContainer.innerHTML = '<h4 class="text-md font-semibold text-gray-600 mb-3">Parameters</h4>'; // Clear previous
+
+            let paramsHtml = '<div class="grid grid-cols-1 md:grid-cols-3 gap-4">';
+            // Add parameters based on selection (mockup) - Same as previous version
+             if (selectedStrategy === 'adaptive_ma') {
+                paramsHtml += `
+                    <div><label for="p1" class="block text-xs font-medium text-gray-600 mb-1">ER Period</label><input type="number" id="p1" value="10" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                    <div><label for="p2" class="block text-xs font-medium text-gray-600 mb-1">Fast SC</label><input type="number" id="p2" value="2" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                    <div><label for="p3" class="block text-xs font-medium text-gray-600 mb-1">Slow SC</label><input type="number" id="p3" value="30" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                `;
+            } else if (selectedStrategy === 'vhf_filter') {
+                 paramsHtml += `
+                    <div><label for="p1" class="block text-xs font-medium text-gray-600 mb-1">VHF Period</label><input type="number" id="p1" value="28" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                    <div><label for="p2" class="block text-xs font-medium text-gray-600 mb-1">Trend Threshold</label><input type="number" step="0.05" id="p2" value="0.35" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                 `;
+            } else if (selectedStrategy === 'fdi_adaptive') {
+                 paramsHtml += `
+                    <div><label for="p1" class="block text-xs font-medium text-gray-600 mb-1">FDI Period</label><input type="number" id="p1" value="14" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                    <div><label for="p2" class="block text-xs font-medium text-gray-600 mb-1">Oscillator Period</label><input type="number" id="p2" value="10" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                    <div><label for="p3" class="block text-xs font-medium text-gray-600 mb-1">Regime Threshold</label><input type="number" step="0.1" id="p3" value="1.5" class="w-full px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                 `;
+            } else {
+                 paramsHtml += '<p class="text-sm text-gray-500 md:col-span-3">No specific parameters for this template in prototype.</p>';
+            }
+             paramsHtml += '</div>';
+            paramsContainer.innerHTML += paramsHtml;
+        });
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons(); // Initialize Lucide icons
+
+            // Initialize Dashboard Chart (still uses mock data for initial load)
+            const equityCtx = document.getElementById('equityCurveChart').getContext('2d');
+            const initialEquity = generateMockEquityData(); // Use generator
+            equityChart = createChart(equityCtx, initialEquity.labels, initialEquity.data, 'Portfolio Equity');
+            updatePositionsTable(); // Use mock positions
+
+            // Show initial section (Dashboard)
+            showSection('dashboard');
+
+             // Trigger change event to load initial parameters for strategy config
+            document.getElementById('strategy-template').dispatchEvent(new Event('change'));
+        });
+
+    </script>
+</body>
+</html>
